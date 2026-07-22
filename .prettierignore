@@ -1,0 +1,6 @@
+node_modules
+out
+release
+coverage
+build/icon.icns
+build/*.svg
