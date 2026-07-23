@@ -1,0 +1,24 @@
+---
+description: Non-negotiable Resturanet product, data, and repository boundaries
+alwaysApply: true
+---
+
+# Resturanet invariants
+
+- Read `AGENTS.md` and `.cursor/PROJECT_CONTEXT.md` before editing.
+- Keep Resturanet offline, local-first, desktop-only, and single-user.
+- Do not add accounts, cloud/sync, remote content, inventory, recipes, meal
+  costing, or multi-restaurant scope without explicit authorization.
+- Main owns SQLite/files/privileged APIs; preload is a typed allowlist; renderer
+  is unprivileged React; shared code is serializable and side-effect free.
+- Validate every IPC input with Zod and use transactions for related writes.
+- Store integer IQD and Baghdad business dates as `YYYY-MM-DD`.
+- Keep purchases, recorded expense, cash out, supplier debt, and result
+  independent. One real movement is posted exactly once.
+- Arabic is default; every system surface works in AR/RTL and EN/LTR. Never
+  translate or rewrite user-entered data.
+- Preserve existing databases, backups, attachments, and recoverable deletion.
+- Never commit generated builds, restaurant data, backups, logs, credentials,
+  or machine-specific paths.
+
+Use the targeted rules and `.cursor/reference/` files for procedural detail.

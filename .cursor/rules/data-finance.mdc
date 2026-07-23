@@ -1,0 +1,47 @@
+---
+description: SQLite migrations, transactions, and restaurant financial invariants
+globs: ["src/main/{database,store,backup}.ts", "src/shared/{contracts,schemas,finance}.ts", "src/**/*.{test,spec}.{ts,tsx}"]
+alwaysApply: false
+---
+
+# Data and finance rules
+
+Use `@.cursor/reference/financial-model.md` as the posting contract.
+
+## Money and dates
+
+- Money is safe non-negative integer IQD at input boundaries; quantities may be
+  decimal, monetary totals may not.
+- Business dates use validated `YYYY-MM-DD` values and Baghdad date helpers.
+- IDs are UUIDs. Editable document numbers are not primary keys.
+
+## Ledger integrity
+
+- Derive supplier balance; never persist a mutable running balance.
+- Invoice `paid now` creates one linked payment counted as cash out once.
+- Overpayment requires explicit confirmation and displays as restaurant credit.
+- A historical previous-balance change becomes a dated adjustment.
+- Opening balances and adjustments affect supplier debt only.
+- No sales or unavailable sales makes result unavailable. Estimated sales
+  permits a result only with a visible warning.
+
+## Migrations
+
+- Never change an applied migration’s meaning.
+- Add a new schema version for persistent shape or semantic changes.
+- Make forward steps idempotent and preserve IDs, custom text, soft-deleted
+  rows, catalog translation keys, and attachment references.
+- Test fresh creation, the previous supported schema, and an older compatible
+  backup restored then migrated on reopen.
+
+## Lifecycle and atomicity
+
+- Save header, children, embedded payment, and related metadata in one SQLite
+  transaction.
+- Validate a historical batch completely before its all-or-none transaction.
+- Commit attachment tokens only for a successfully persisted entity; cleanup
+  must not delete attachments still referenced elsewhere.
+- Create/re-link work days with dated records. Remove a day only when no active
+  or trashed record needs it.
+- Test create, edit, date move, trash, restore, permanent delete, and rollback
+  for every changed posting path.

@@ -61,6 +61,7 @@ Backup packages use the `.resturanet-backup` extension and contain `database.sql
 Run:
 
 ```bash
+npm run check:agent-config
 npm run format:check
 npm run typecheck
 npm test

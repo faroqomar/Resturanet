@@ -1,0 +1,32 @@
+---
+description: Electron process boundaries and dependency direction
+globs: ["src/main/**/*.ts", "src/preload/**/*.ts", "src/renderer/**/*.{ts,tsx}", "src/shared/**/*.ts"]
+alwaysApply: false
+---
+
+# Architecture rules
+
+Use `@.cursor/reference/change-impact-matrix.md` for vertical-slice order.
+
+## Ownership
+
+- `src/shared`: serializable DTOs, Zod schemas, stable catalog metadata, and
+  pure financial/date functions. No Electron, React, SQLite, locale state, or
+  filesystem side effects.
+- `src/main`: SQLite, transactions, dialogs, attachment files, backup/restore,
+  print/export, trusted-origin checks, and IPC handlers.
+- `src/preload`: named `contextBridge` methods matching `RestaurantApi`. Never
+  expose `ipcRenderer`, generic `invoke`, arbitrary channels, or raw file APIs.
+- `src/renderer`: React UI and formatting through `window.restaurantApi`. Never
+  import Node.js, Electron main APIs, `better-sqlite3`, or implement a second
+  accounting formula.
+
+## Data flow
+
+`renderer -> narrow preload method -> validated IPC handler -> store/service -> SQLite/files`
+
+- Inputs cross as schema-validated plain values.
+- Outputs cross as serializable DTOs, not raw rows or main-process objects.
+- A feature spanning the boundary is incomplete until every affected layer and
+  its negative tests agree.
+- Do not create reverse imports or “temporary” privilege shortcuts.

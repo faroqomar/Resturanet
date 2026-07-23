@@ -1,0 +1,27 @@
+---
+description: Electron, IPC, filesystem, attachment, and backup security
+globs: ["src/main/**/*.ts", "src/preload/**/*.ts", "src/renderer/index.html"]
+alwaysApply: false
+---
+
+# Security rules
+
+Use `@.cursor/reference/security-boundary.md` as the trust model.
+
+- Keep `nodeIntegration: false`, `contextIsolation: true`, sandbox, web
+  security, restrictive CSP, and navigation/window/permission blocking.
+- Allowlist channels, verify the sender, and Zod-parse values before storage or
+  file access.
+- Never accept renderer-controlled SQL, table/column names, channels, absolute
+  paths, shell commands, or generic filesystem operations.
+- Resolve paths against their allowed root and reject traversal/symlinks.
+- Attachments are JPG/JPEG/PNG/PDF, at most 25 MB, copied to generated internal
+  names and opened only by explicit user action.
+- Restore rejects absolute/traversal/symlink/unexpected/duplicate ZIP entries,
+  incompatible manifests, and excessive extraction. Validate staging fully
+  before a safety backup and live-data swap.
+- UI errors and committed logs never expose restaurant records, invoice
+  contents, attachment data, backup contents, stacks, SQL, secrets, or
+  unintended local paths.
+- Any new network, external URL, file format, shell, native dependency, or
+  privilege requires an explicit threat review and negative tests.

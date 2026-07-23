@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "deny": [
+      "Shell(rm)",
+      "Shell(sudo)",
+      "Read(.env*)",
+      "Read(**/.env*)",
+      "Read(**/*.key)",
+      "Read(**/*.pem)",
+      "Read(**/*.p12)",
+      "Write(.env*)",
+      "Write(**/.env*)",
+      "Write(**/*.key)",
+      "Write(**/*.pem)",
+      "Write(**/*.p12)"
+    ]
+  }
+}

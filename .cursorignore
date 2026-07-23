@@ -1,0 +1,21 @@
+# Dependencies and generated output
+node_modules/
+out/
+release/
+coverage/
+
+# Local restaurant data and recovery artifacts
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.resturanet-backup
+attachments/
+backups/
+
+# Logs, secrets, and machine-local configuration
+*.log
+.env*
+*.key
+*.pem
+*.p12
+.DS_Store

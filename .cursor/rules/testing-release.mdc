@@ -1,0 +1,43 @@
+---
+description: Verification gates for tests, installed builds, and releases
+globs: ["src/**/*.test.{ts,tsx}", "scripts/**", "package.json", "docs/**"]
+alwaysApply: false
+---
+
+# Testing and release rules
+
+Use `@.cursor/reference/change-impact-matrix.md` for change-specific coverage and
+`@.cursor/reference/release-ledger-scenario.md` for release acceptance.
+
+## Test in proportion to risk
+
+- Finance change: formula and SQLite integration tests.
+- Schema change: fresh database and previous-version migration tests.
+- IPC change: malformed input, trusted sender/channel, and serialization checks.
+- UI change: Arabic/English, RTL/LTR, keyboard, error, and empty-state tests.
+- Backup change: real database and attachment round-trip.
+- Batch change: invalid-row rollback and valid atomic commit.
+- Lifecycle change: create, edit, date move, trash, restore, restart.
+
+## Release gate
+
+Run:
+
+```bash
+npm run format:check
+npm run typecheck
+npm test
+npm run build
+npm run package:mac
+```
+
+For the DMG:
+
+- Verify SHA-256, `hdiutil verify`, version, and ARM64 architecture.
+- Mount, copy, and launch the packaged app outside the development server.
+- Use an isolated `RESTURANET_DATA_DIR`.
+- Run the deterministic release-ledger scenario and compare exact totals.
+- Verify both locales/directions, CSV BOM/escaping, attachment, trash, backup
+  restore, and restart persistence.
+- State clearly when physical printing or Apple notarization could not be
+  verified.

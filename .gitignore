@@ -7,3 +7,10 @@ coverage/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+*.resturanet-backup
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12

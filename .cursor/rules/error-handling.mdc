@@ -1,0 +1,23 @@
+---
+description: Safe error handling and confirmation behavior
+globs: ["src/**/*.{ts,tsx}"]
+alwaysApply: false
+---
+
+# Error handling rules
+
+- Distinguish validation, explicit confirmation, domain conflict, cancellation,
+  storage failure, and unexpected failure; do not flatten them into “failed.”
+- User messages are concise, localized, actionable, and free of stack traces,
+  SQL, raw Electron errors, backup internals, or unintended paths.
+- Duplicate, overpayment, opening-balance, restore, and permanent-delete gates
+  use stable machine-recognizable error/confirmation contracts plus localized
+  display text.
+- A confirmation authorizes the named exception only; it never weakens future
+  validation or silently changes financial classification.
+- Clear busy state in `finally`, prevent double submit, preserve form values
+  after recoverable failure, and expose success/warning/error through accessible
+  status semantics.
+- Roll back failed transactions and do not commit pending attachments.
+- Preserve causal context internally without logging restaurant content,
+  secrets, or private file data.

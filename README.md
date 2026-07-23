@@ -39,6 +39,7 @@ npm run dev
 Quality checks:
 
 ```bash
+npm run check:agent-config
 npm run format:check
 npm run typecheck
 npm test
@@ -75,3 +76,14 @@ Restoring creates an automatic safety backup first. Backups from schema version 
 - An estimated result is shown only when every work day in the range has usable sales data.
 
 See [Architecture](docs/ARCHITECTURE.md) for the data model, IPC boundary, migration strategy, and security design.
+
+## AI-assisted development
+
+Repository-specific instructions start in [AGENTS.md](AGENTS.md). The curated
+`.cursor/` workspace contains file-scoped rules, canonical finance/security
+references, procedural skills, reusable slash commands, and independent
+read-only reviewers. Validate the toolkit with:
+
+```bash
+npm run check:agent-config
+```

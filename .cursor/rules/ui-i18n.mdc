@@ -1,0 +1,27 @@
+---
+description: Bilingual UI, RTL/LTR, accessibility, and visual system rules
+globs: ["src/renderer/**/*.{ts,tsx,css}", ".impeccable.md"]
+alwaysApply: false
+---
+
+# UI and localization rules
+
+- Arabic (`ar`) is default and RTL; English (`en`) is LTR.
+- Set document `lang` and `dir`; use logical CSS rather than left/right
+  assumptions.
+- Add every system-owned string to the local translation system, including
+  visible copy, accessible names, validation, empty states, confirmations, CSV,
+  print, and native-dialog labels.
+- Built-in catalogs use stable translation keys.
+- Never translate custom categories, supplier names, recipients, document
+  numbers, or notes.
+- Format dates, numbers, and IQD with `ar-IQ` or `en-IQ`; stored values remain
+  locale-neutral.
+- Use semantic fields, visible focus, keyboard access, large targets, and status
+  text/icons that do not depend on color alone.
+- Preserve the warm sand, dark ink, olive, brick, and amber visual language in
+  `.impeccable.md`.
+- Prefer full-page document forms and visible summaries over nested modal flows.
+- Preserve entered values after recoverable errors and announce async status.
+- Test live locale switching, restart persistence, long copy, large amounts,
+  dense tables, empty/error/warning states, and narrow supported windows.
