@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import type { SettingsSnapshot } from "@shared/contracts";
 import { api, errorMessage } from "./lib";
@@ -13,9 +13,12 @@ import { SalesPage } from "./pages/SalesPage";
 import { OperatingExpensesPage } from "./pages/OperatingExpensesPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { HistoricalEntryPage } from "./pages/HistoricalEntryPage";
 import { Loading, Notice } from "./components/Common";
+import { I18nProvider, LanguageToggle, useI18n } from "./i18n";
 
 function Setup({ onDone }: { onDone: (settings: SettingsSnapshot) => void }) {
+  const { locale } = useI18n();
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -32,9 +35,12 @@ function Setup({ onDone }: { onDone: (settings: SettingsSnapshot) => void }) {
     }
   };
   return (
-    <main className="setup" dir="rtl">
+    <main className="setup">
+      <div className="setup-language">
+        <LanguageToggle />
+      </div>
       <div className="setup-art">
-        <span>ر</span>
+        <span>{locale === "ar" ? "ر" : "R"}</span>
         <p>
           كل رقم في مكانه.
           <br />
@@ -76,6 +82,9 @@ export function App() {
       .then(setSettings)
       .catch((reason) => setError(errorMessage(reason)));
   }, []);
+  const changeLanguage = useCallback(async (language: "ar" | "en") => {
+    setSettings(await api.settings.saveLanguage(language));
+  }, []);
   if (error)
     return (
       <div className="fatal">
@@ -83,44 +92,59 @@ export function App() {
       </div>
     );
   if (!settings) return <Loading />;
-  if (!settings.restaurantName) return <Setup onDone={setSettings} />;
   return (
-    <HashRouter>
-      <Layout settings={settings}>
-        <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/days" element={<WorkDaysPage />} />
-          <Route
-            path="/expenses"
-            element={<RestaurantExpensesPage settings={settings} />}
-          />
-          <Route
-            path="/suppliers"
-            element={<SuppliersPage settings={settings} />}
-          />
-          <Route
-            path="/supplier-invoices"
-            element={<SupplierInvoicesPage kind="standard" />}
-          />
-          <Route
-            path="/produce-invoices"
-            element={<SupplierInvoicesPage kind="produce" />}
-          />
-          <Route path="/supplier-payments" element={<SupplierPaymentsPage />} />
-          <Route path="/sales" element={<SalesPage settings={settings} />} />
-          <Route
-            path="/operating"
-            element={<OperatingExpensesPage settings={settings} />}
-          />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route
-            path="/settings"
-            element={
-              <SettingsPage settings={settings} onSettings={setSettings} />
-            }
-          />
-        </Routes>
-      </Layout>
-    </HashRouter>
+    <I18nProvider locale={settings.language} onLocale={changeLanguage}>
+      {!settings.restaurantName ? (
+        <Setup onDone={setSettings} />
+      ) : (
+        <HashRouter>
+          <Layout settings={settings}>
+            <Routes>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/days" element={<WorkDaysPage />} />
+              <Route
+                path="/historical"
+                element={<HistoricalEntryPage settings={settings} />}
+              />
+              <Route
+                path="/expenses"
+                element={<RestaurantExpensesPage settings={settings} />}
+              />
+              <Route
+                path="/suppliers"
+                element={<SuppliersPage settings={settings} />}
+              />
+              <Route
+                path="/supplier-invoices"
+                element={<SupplierInvoicesPage kind="standard" />}
+              />
+              <Route
+                path="/produce-invoices"
+                element={<SupplierInvoicesPage kind="produce" />}
+              />
+              <Route
+                path="/supplier-payments"
+                element={<SupplierPaymentsPage />}
+              />
+              <Route
+                path="/sales"
+                element={<SalesPage settings={settings} />}
+              />
+              <Route
+                path="/operating"
+                element={<OperatingExpensesPage settings={settings} />}
+              />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route
+                path="/settings"
+                element={
+                  <SettingsPage settings={settings} onSettings={setSettings} />
+                }
+              />
+            </Routes>
+          </Layout>
+        </HashRouter>
+      )}
+    </I18nProvider>
   );
 }

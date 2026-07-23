@@ -4,6 +4,7 @@ import {
   BadgeDollarSign,
   BanknoteArrowDown,
   CalendarDays,
+  History,
   ChartNoAxesCombined,
   ChevronDown,
   ClipboardList,
@@ -18,10 +19,12 @@ import {
   Users,
 } from "lucide-react";
 import type { SettingsSnapshot } from "@shared/contracts";
+import { LanguageToggle, translateRaw, useI18n } from "../i18n";
 
 const nav = [
   ["/", "الرئيسية", LayoutDashboard],
   ["/days", "أيام العمل", CalendarDays],
+  ["/historical", "الإدخال القديم", History],
   ["/expenses", "فواتير مصاريف المطعم", ReceiptText],
   ["/suppliers", "الموردون", Users],
   ["/supplier-invoices", "فواتير الموردين", Truck],
@@ -40,6 +43,7 @@ const quick = [
   ["/supplier-payments", "دفعة لمورد"],
   ["/sales", "مبيعات يومية"],
   ["/operating", "إيجار أو راتب أو مصروف"],
+  ["/historical", "الإدخال القديم"],
 ] as const;
 
 export function Layout({
@@ -49,6 +53,7 @@ export function Layout({
   settings: SettingsSnapshot;
   children: ReactNode;
 }) {
+  const { locale } = useI18n();
   const [open, setOpen] = useState(false);
   const location = useLocation();
   return (
@@ -72,7 +77,7 @@ export function Layout({
               className={({ isActive }) => (isActive ? "active" : "")}
             >
               <Icon size={19} />
-              <span>{label}</span>
+              <span>{translateRaw(label, locale)}</span>
             </NavLink>
           ))}
         </nav>
@@ -85,11 +90,15 @@ export function Layout({
           <div>
             <ClipboardList size={18} />
             <span>
-              {nav.find(([path]) => path === location.pathname)?.[1] ??
-                "نظام المطعم"}
+              {translateRaw(
+                nav.find(([path]) => path === location.pathname)?.[1] ??
+                  "نظام المطعم",
+                locale,
+              )}
             </span>
           </div>
           <div className="quick-wrap">
+            <LanguageToggle compact />
             <button className="button primary" onClick={() => setOpen(!open)}>
               <Plus size={18} /> إنشاء فاتورة جديدة <ChevronDown size={15} />
             </button>
@@ -101,7 +110,7 @@ export function Layout({
                     to={`${path}?new=1`}
                     onClick={() => setOpen(false)}
                   >
-                    {label}
+                    {translateRaw(label, locale)}
                   </NavLink>
                 ))}
               </div>

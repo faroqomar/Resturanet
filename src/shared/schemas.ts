@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const idSchema = z.string().uuid();
+export const localeSchema = z.enum(["ar", "en"]);
 export const dateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "التاريخ غير صحيح");
@@ -30,6 +31,7 @@ export const supplierSchema = z.object({
   address: z.string().trim().max(240).optional().default(""),
   notes: optionalText,
   openingBalance: moneySchema.default(0),
+  openingBalanceDate: dateSchema.nullable().optional(),
   active: z.boolean().default(true),
 });
 
@@ -95,6 +97,27 @@ export const supplierPaymentSchema = z.object({
   attachmentTokens,
   allowDuplicate: z.boolean().optional(),
   confirmOverpayment: z.boolean().optional(),
+});
+
+export const supplierAdjustmentSchema = z.object({
+  id: idSchema.optional(),
+  adjustmentNumber: z.string().trim().max(80).optional(),
+  date: dateSchema,
+  supplierId: idSchema,
+  direction: z.enum(["increase_debt", "decrease_debt"]),
+  amount: positiveMoneySchema,
+  reason: z.string().trim().min(1, "سبب التسوية مطلوب").max(240),
+  notes: optionalText,
+  attachmentTokens,
+  allowDuplicate: z.boolean().optional(),
+});
+
+export const supplierOpeningBalanceSchema = z.object({
+  date: dateSchema,
+  supplierId: idSchema,
+  amount: moneySchema,
+  notes: optionalText,
+  confirmExisting: z.boolean().optional(),
 });
 
 export const saleSchema = z
@@ -176,9 +199,47 @@ export const reportFiltersSchema = dateRangeSchema.extend({
       "restaurantExpense",
       "supplierInvoice",
       "supplierPayment",
+      "supplierAdjustment",
       "sale",
       "operatingExpense",
     ])
     .optional(),
   search: z.string().trim().max(160).optional(),
 });
+
+export const historicalEntrySchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("restaurantExpense"),
+    value: restaurantExpenseSchema,
+  }),
+  z.object({
+    type: z.literal("supplierInvoice"),
+    value: supplierInvoiceSchema,
+  }),
+  z.object({
+    type: z.literal("supplierPayment"),
+    value: supplierPaymentSchema,
+  }),
+  z.object({
+    type: z.literal("supplierOpeningBalance"),
+    value: supplierOpeningBalanceSchema,
+  }),
+  z.object({
+    type: z.literal("supplierAdjustment"),
+    value: supplierAdjustmentSchema,
+  }),
+  z.object({ type: z.literal("sale"), value: saleSchema }),
+  z.object({
+    type: z.literal("operatingExpense"),
+    value: operatingExpenseSchema,
+  }),
+]);
+
+export const historicalBatchSchema = z
+  .array(historicalEntrySchema)
+  .min(1, "أضف سجلًا واحدًا على الأقل")
+  .max(250, "الحد الأقصى 250 سجلًا في الدفعة")
+  .refine(
+    (entries) => entries.every((entry) => entry.type === entries[0]?.type),
+    "يجب أن تكون جميع صفوف الدفعة من النوع نفسه",
+  );

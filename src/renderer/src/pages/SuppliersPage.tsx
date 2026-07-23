@@ -16,6 +16,7 @@ import {
   useLoad,
 } from "../components/Common";
 import { api, errorMessage, formatDate, numberValue } from "../lib";
+import { useI18n } from "../i18n";
 
 const blank = (typeId = ""): Omit<Supplier, "id"> & { id?: string } => ({
   name: "",
@@ -24,10 +25,12 @@ const blank = (typeId = ""): Omit<Supplier, "id"> & { id?: string } => ({
   address: "",
   notes: "",
   openingBalance: 0,
+  openingBalanceDate: null,
   active: true,
 });
 
 export function SuppliersPage({ settings }: { settings: SettingsSnapshot }) {
+  const { catalogName } = useI18n();
   const types = settings.catalogs.filter(
     (item) => item.kind === "supplier_type" && item.active,
   );
@@ -99,7 +102,7 @@ export function SuppliersPage({ settings }: { settings: SettingsSnapshot }) {
                 >
                   {types.map((type) => (
                     <option key={type.id} value={type.id}>
-                      {type.name}
+                      {catalogName(type)}
                     </option>
                   ))}
                 </Select>
@@ -119,6 +122,18 @@ export function SuppliersPage({ settings }: { settings: SettingsSnapshot }) {
                     setForm({
                       ...form,
                       openingBalance: numberValue(e.target.value),
+                    })
+                  }
+                />
+              </Field>
+              <Field label="تاريخ الرصيد الافتتاحي">
+                <Input
+                  type="date"
+                  value={form.openingBalanceDate ?? ""}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      openingBalanceDate: e.target.value || null,
                     })
                   }
                 />
@@ -162,7 +177,21 @@ export function SuppliersPage({ settings }: { settings: SettingsSnapshot }) {
           </aside>
         </form>
       ) : selected && detail.data ? (
-        <SupplierDetail detail={detail.data} onBack={() => setSelected(null)} />
+        <SupplierDetail
+          detail={detail.data}
+          typeName={catalogName(
+            settings.catalogs.find(
+              (item) => item.id === detail.data!.supplier.typeId,
+            ) ?? {
+              id: detail.data!.supplier.typeId,
+              kind: "supplier_type",
+              name: detail.data!.supplier.typeName ?? "",
+              active: true,
+              builtIn: false,
+            },
+          )}
+          onBack={() => setSelected(null)}
+        />
       ) : data.length === 0 ? (
         <EmptyState
           title="لا يوجد موردون"
@@ -196,7 +225,19 @@ export function SuppliersPage({ settings }: { settings: SettingsSnapshot }) {
                       {supplier.name}
                     </button>
                   </td>
-                  <td>{supplier.typeName}</td>
+                  <td>
+                    {catalogName(
+                      settings.catalogs.find(
+                        (item) => item.id === supplier.typeId,
+                      ) ?? {
+                        id: supplier.typeId,
+                        kind: "supplier_type",
+                        name: supplier.typeName ?? "",
+                        active: true,
+                        builtIn: false,
+                      },
+                    )}
+                  </td>
                   <td>
                     <Money value={supplier.purchases ?? 0} />
                   </td>
@@ -235,9 +276,11 @@ export function SuppliersPage({ settings }: { settings: SettingsSnapshot }) {
 
 function SupplierDetail({
   detail,
+  typeName,
   onBack,
 }: {
   detail: Awaited<ReturnType<typeof api.suppliers.get>>;
+  typeName: string;
   onBack: () => void;
 }) {
   return (
@@ -249,7 +292,7 @@ function SupplierDetail({
         <div>
           <WalletCards />
           <span>
-            <small>{detail.supplier.typeName}</small>
+            <small>{typeName}</small>
             <h2>{detail.supplier.name}</h2>
           </span>
         </div>

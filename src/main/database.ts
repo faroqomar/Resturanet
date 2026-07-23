@@ -1,6 +1,9 @@
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { defaultCatalogs } from "../shared/catalogs";
+
+export const CURRENT_SCHEMA_VERSION = 2;
 
 const schema = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -17,6 +20,7 @@ CREATE TABLE IF NOT EXISTS catalogs (
   id TEXT PRIMARY KEY,
   kind TEXT NOT NULL CHECK(kind IN ('supplier_type','expense_type','sales_category','restaurant_expense_category')),
   name TEXT NOT NULL,
+  translation_key TEXT,
   active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
   built_in INTEGER NOT NULL DEFAULT 0 CHECK(built_in IN (0,1)),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -38,6 +42,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
   address TEXT NOT NULL DEFAULT '',
   notes TEXT NOT NULL DEFAULT '',
   opening_balance INTEGER NOT NULL DEFAULT 0 CHECK(opening_balance >= 0),
+  opening_balance_date TEXT,
   active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -107,6 +112,21 @@ CREATE TABLE IF NOT EXISTS supplier_payments (
   deleted_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS supplier_adjustments (
+  id TEXT PRIMARY KEY,
+  work_day_id TEXT NOT NULL REFERENCES work_days(id),
+  adjustment_number TEXT NOT NULL,
+  date TEXT NOT NULL,
+  supplier_id TEXT NOT NULL REFERENCES suppliers(id),
+  direction TEXT NOT NULL CHECK(direction IN ('increase_debt','decrease_debt')),
+  amount INTEGER NOT NULL CHECK(amount > 0),
+  reason TEXT NOT NULL,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS sales (
   id TEXT PRIMARY KEY,
   work_day_id TEXT NOT NULL REFERENCES work_days(id),
@@ -168,6 +188,8 @@ CREATE INDEX IF NOT EXISTS idx_supplier_invoice_date ON supplier_invoices(date, 
 CREATE INDEX IF NOT EXISTS idx_supplier_invoice_supplier ON supplier_invoices(supplier_id, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_supplier_payment_date ON supplier_payments(date, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_supplier_payment_supplier ON supplier_payments(supplier_id, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_supplier_adjustment_date ON supplier_adjustments(date, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_supplier_adjustment_supplier ON supplier_adjustments(supplier_id, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(date, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_operating_expense_date ON operating_expenses(date, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_attachment_entity ON attachments(entity_type, entity_id);
@@ -196,9 +218,26 @@ export class DatabaseManager {
 
   private migrate(): void {
     this.connection.exec(schema);
+    const hasColumn = (table: string, column: string) =>
+      (
+        this.connection.prepare(`PRAGMA table_info(${table})`).all() as Array<{
+          name: string;
+        }>
+      ).some((item) => item.name === column);
+    if (!hasColumn("catalogs", "translation_key"))
+      this.connection.exec(
+        "ALTER TABLE catalogs ADD COLUMN translation_key TEXT",
+      );
+    if (!hasColumn("suppliers", "opening_balance_date"))
+      this.connection.exec(
+        "ALTER TABLE suppliers ADD COLUMN opening_balance_date TEXT",
+      );
     this.connection
       .prepare("INSERT OR IGNORE INTO schema_migrations(version) VALUES (?)")
       .run(1);
+    this.connection
+      .prepare("INSERT OR IGNORE INTO schema_migrations(version) VALUES (?)")
+      .run(CURRENT_SCHEMA_VERSION);
     this.connection
       .prepare(
         "INSERT OR IGNORE INTO settings(key, value) VALUES ('restaurant_name', '')",
@@ -209,6 +248,19 @@ export class DatabaseManager {
         "INSERT OR IGNORE INTO settings(key, value) VALUES ('currency', 'IQD')",
       )
       .run();
+    this.connection
+      .prepare(
+        "INSERT OR IGNORE INTO settings(key, value) VALUES ('language', 'ar')",
+      )
+      .run();
+    const backfillCatalog = this.connection.prepare(
+      "UPDATE catalogs SET translation_key=? WHERE kind=? AND name=? AND built_in=1 AND translation_key IS NULL",
+    );
+    const backfill = this.connection.transaction(() => {
+      for (const item of defaultCatalogs)
+        backfillCatalog.run(item.key, item.kind, item.ar);
+    });
+    backfill();
   }
 
   close(): void {

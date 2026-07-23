@@ -23,6 +23,7 @@ import {
   useLoad,
 } from "../components/Common";
 import { api, errorMessage, formatDate, numberValue, today } from "../lib";
+import { useI18n } from "../i18n";
 
 const blank = (categoryId: string): RestaurantExpenseInput => ({
   date: today(),
@@ -37,6 +38,7 @@ export function RestaurantExpensesPage({
 }: {
   settings: SettingsSnapshot;
 }) {
+  const { catalogName } = useI18n();
   const categories = settings.catalogs.filter(
     (item) => item.kind === "restaurant_expense_category" && item.active,
   );
@@ -164,7 +166,7 @@ export function RestaurantExpensesPage({
                     >
                       {categories.map((category) => (
                         <option key={category.id} value={category.id}>
-                          {category.name}
+                          {catalogName(category)}
                         </option>
                       ))}
                     </select>

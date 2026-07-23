@@ -11,6 +11,7 @@ import type { AppStore } from "./store";
 import type {
   CatalogKind,
   EntityType,
+  HistoricalEntryInput,
   ReportFilters,
   SupplierInvoiceKind,
   TrashItem,
@@ -22,18 +23,24 @@ import {
   idSchema,
   operatingExpenseSchema,
   reportFiltersSchema,
+  historicalBatchSchema,
+  localeSchema,
   restaurantExpenseSchema,
   saleSchema,
   supplierInvoiceSchema,
+  supplierAdjustmentSchema,
+  supplierOpeningBalanceSchema,
   supplierPaymentSchema,
   supplierSchema,
 } from "../shared/schemas";
 import { z } from "zod";
+import { defaultCatalogs } from "../shared/catalogs";
 
 const entityTypeSchema = z.enum([
   "restaurantExpense",
   "supplierInvoice",
   "supplierPayment",
+  "supplierAdjustment",
   "sale",
   "operatingExpense",
 ]);
@@ -42,6 +49,7 @@ const trashTypeSchema = z.enum([
   "restaurantExpense",
   "supplierInvoice",
   "supplierPayment",
+  "supplierAdjustment",
   "sale",
   "operatingExpense",
 ]);
@@ -84,6 +92,14 @@ export function registerIpc(
       z.string().trim().min(1).max(160).parse(name),
     ),
   );
+  channel("settings:language", (event, language) => {
+    const locale = localeSchema.parse(language);
+    const settings = getStore().saveLanguage(locale);
+    BrowserWindow.fromWebContents(event.sender)?.setTitle(
+      locale === "ar" ? "نظام المطعم" : "Restaurant System",
+    );
+    return settings;
+  });
   channel("settings:catalog:add", (_event, kind, name) => {
     const value = catalogSchema.parse({ kind, name });
     return getStore().addCatalog(value.kind, value.name);
@@ -172,6 +188,29 @@ export function registerIpc(
     getStore().trash("supplierPayment", idSchema.parse(id)),
   );
 
+  channel("supplier-adjustments:list", (_event, range) =>
+    getStore().listSupplierAdjustments(
+      range ? dateRangeSchema.parse(range) : undefined,
+    ),
+  );
+  channel("supplier-adjustments:get", (_event, id) =>
+    getStore().supplierAdjustment(idSchema.parse(id)),
+  );
+  channel("supplier-adjustments:save", (_event, raw) => {
+    const input = supplierAdjustmentSchema.parse(raw);
+    const result = getStore().saveSupplierAdjustment(input);
+    files.commit(input.attachmentTokens, "supplierAdjustment", result.value.id);
+    return result;
+  });
+  channel("supplier-adjustments:opening", (_event, raw) =>
+    getStore().saveSupplierOpeningBalance(
+      supplierOpeningBalanceSchema.parse(raw),
+    ),
+  );
+  channel("supplier-adjustments:trash", (_event, id) =>
+    getStore().trash("supplierAdjustment", idSchema.parse(id)),
+  );
+
   channel("sales:list", (_event, range) =>
     getStore().listSales(range ? dateRangeSchema.parse(range) : undefined),
   );
@@ -204,36 +243,97 @@ export function registerIpc(
     getStore().trash("operatingExpense", idSchema.parse(id)),
   );
 
+  channel("historical:validate-batch", (_event, raw) => {
+    const result = historicalBatchSchema.safeParse(raw);
+    if (result.success) return { valid: true, issues: [] };
+    return {
+      valid: false,
+      issues: result.error.issues.map((issue) => ({
+        row: typeof issue.path[0] === "number" ? issue.path[0] : 0,
+        field: issue.path.slice(2).join(".") || undefined,
+        message: issue.message,
+      })),
+    };
+  });
+  channel("historical:save-batch", (_event, raw) => {
+    const entries = historicalBatchSchema.parse(raw) as HistoricalEntryInput[];
+    if (
+      entries.some(
+        (entry) =>
+          "attachmentTokens" in entry.value &&
+          Boolean(entry.value.attachmentTokens?.length),
+      )
+    )
+      throw new Error("المرفقات متاحة في الإدخال التفصيلي فقط");
+    return getStore().saveHistoricalBatch(entries);
+  });
+
   channel("reports:rows", (_event, filters) =>
     getStore().reportRows(reportFiltersSchema.parse(filters)),
   );
   channel("reports:csv", async (_event, raw) => {
     const filters = reportFiltersSchema.parse(raw) as ReportFilters;
     const rows = getStore().reportRows(filters);
+    const english = getStore().settings().language === "en";
     const result = await dialog.showSaveDialog({
-      title: "تصدير التقرير",
-      defaultPath: `تقرير-${filters.from}-${filters.to}.csv`,
-      filters: [{ name: "CSV متوافق مع Excel", extensions: ["csv"] }],
+      title: english ? "Export report" : "تصدير التقرير",
+      defaultPath: `${english ? "report" : "تقرير"}-${filters.from}-${filters.to}.csv`,
+      filters: [
+        {
+          name: english ? "Excel-compatible CSV" : "CSV متوافق مع Excel",
+          extensions: ["csv"],
+        },
+      ],
     });
     if (result.canceled || !result.filePath) return { canceled: true };
-    const headers = [
-      "التاريخ",
-      "النوع",
-      "الرقم",
-      "الجهة",
-      "القسم",
-      "المبلغ",
-      "المدفوع",
-      "المتبقي",
-    ];
+    const headers = english
+      ? [
+          "Date",
+          "Type",
+          "Reference",
+          "Party",
+          "Category",
+          "Amount",
+          "Paid",
+          "Remaining",
+        ]
+      : [
+          "التاريخ",
+          "النوع",
+          "الرقم",
+          "الجهة",
+          "القسم",
+          "المبلغ",
+          "المدفوع",
+          "المتبقي",
+        ];
     const body = rows
       .map((row) =>
         [
           row.date,
-          row.type,
+          english
+            ? ({
+                "فاتورة مصروف": "Expense invoice",
+                "فاتورة مورد": "Supplier invoice",
+                "فاتورة مخضر": "Produce invoice",
+                "دفعة مورد": "Supplier payment",
+                "تسوية مورد": "Supplier adjustment",
+                مبيعات: "Sales",
+                "مصروف تشغيلي": "Operating expense",
+              }[row.type] ?? row.type)
+            : row.type,
           row.reference,
-          row.party,
-          row.category,
+          english && row.party === "المطعم" ? "Restaurant" : row.party,
+          english
+            ? (defaultCatalogs.find((item) => item.ar === row.category)?.en ??
+              {
+                "مشتريات مورد": "Supplier purchases",
+                "دفعات الموردين": "Supplier payments",
+                مبيعات: "Sales",
+                "تصحيح رصيد افتتاحي": "Opening balance correction",
+              }[row.category] ??
+              row.category)
+            : row.category,
           row.amount,
           row.paid,
           row.remaining,

@@ -21,6 +21,7 @@ import type {
   Attachment,
   EntityType,
   PendingAttachment,
+  AppLocale,
 } from "../shared/contracts";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
@@ -45,6 +46,7 @@ export class AttachmentService {
   constructor(
     private readonly db: () => Database.Database,
     dataDir: string,
+    private readonly getLocale: () => AppLocale,
   ) {
     this.attachmentsDir = join(dataDir, "attachments");
     this.pendingDir = join(dataDir, "pending");
@@ -53,11 +55,17 @@ export class AttachmentService {
   }
 
   async pick(): Promise<PendingAttachment[]> {
+    const english = this.getLocale() === "en";
     const result = await dialog.showOpenDialog({
-      title: "اختر صور الفاتورة أو ملفات PDF",
+      title: english
+        ? "Choose invoice images or PDF files"
+        : "اختر صور الفاتورة أو ملفات PDF",
       properties: ["openFile", "multiSelections"],
       filters: [
-        { name: "الصور وPDF", extensions: ["jpg", "jpeg", "png", "pdf"] },
+        {
+          name: english ? "Images and PDF" : "الصور وPDF",
+          extensions: ["jpg", "jpeg", "png", "pdf"],
+        },
       ],
     });
     if (result.canceled) return [];

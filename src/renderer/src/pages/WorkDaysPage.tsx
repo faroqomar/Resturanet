@@ -158,6 +158,15 @@ function DayGroups({ detail }: { detail: WorkDayDetail }) {
       ]),
     ],
     [
+      "تسويات الموردين",
+      detail.supplierAdjustmentsList.map((x) => [
+        x.id,
+        x.adjustmentNumber,
+        x.supplierName,
+        x.signedAmount,
+      ]),
+    ],
+    [
       "المبيعات اليومية",
       detail.salesRecords.map((x) => [
         x.id,

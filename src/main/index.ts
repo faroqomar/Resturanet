@@ -22,7 +22,8 @@ function createWindow(): void {
     minWidth: 1080,
     minHeight: 720,
     show: false,
-    title: "نظام المطعم",
+    title:
+      store?.settings().language === "en" ? "Restaurant System" : "نظام المطعم",
     backgroundColor: "#f5f0e7",
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
@@ -51,7 +52,11 @@ app.whenReady().then(() => {
   manager = new DatabaseManager(join(dataDir, "resturanet.sqlite"));
   seedCatalogs(manager.db);
   store = new AppStore(manager.db);
-  const files = new AttachmentService(() => manager.db, dataDir);
+  const files = new AttachmentService(
+    () => manager.db,
+    dataDir,
+    () => store.settings().language,
+  );
   const backup = new BackupService(
     manager,
     dataDir,
@@ -60,6 +65,7 @@ app.whenReady().then(() => {
       seedCatalogs(manager.db);
       store = new AppStore(manager.db);
     },
+    () => store.settings().language,
   );
   registerIpc(() => store, files, backup);
   createWindow();

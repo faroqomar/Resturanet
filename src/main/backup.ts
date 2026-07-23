@@ -14,13 +14,14 @@ import {
 import { basename, join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
-import type { DatabaseManager } from "./database";
+import { CURRENT_SCHEMA_VERSION, type DatabaseManager } from "./database";
+import type { AppLocale } from "../shared/contracts";
 
 interface BackupManifest {
   app: "Resturanet";
   version: 1;
   createdAt: string;
-  schemaVersion: 1;
+  schemaVersion: number;
 }
 
 export class BackupService {
@@ -29,15 +30,20 @@ export class BackupService {
     private readonly dataDir: string,
     private readonly attachmentsDir: string,
     private readonly onRestored: () => void,
+    private readonly getLocale: () => AppLocale,
   ) {}
 
   async create(): Promise<{ canceled: boolean; path?: string }> {
+    const english = this.getLocale() === "en";
     const stamp = new Date().toISOString().replaceAll(":", "-").slice(0, 19);
     const result = await dialog.showSaveDialog({
-      title: "حفظ النسخة الاحتياطية",
+      title: english ? "Save backup" : "حفظ النسخة الاحتياطية",
       defaultPath: `Resturanet-backup-${stamp}.resturanet-backup`,
       filters: [
-        { name: "نسخة نظام المطعم", extensions: ["resturanet-backup"] },
+        {
+          name: english ? "Resturanet backup" : "نسخة نظام المطعم",
+          extensions: ["resturanet-backup"],
+        },
       ],
     });
     if (result.canceled || !result.filePath) return { canceled: true };
@@ -55,7 +61,7 @@ export class BackupService {
         app: "Resturanet",
         version: 1,
         createdAt: new Date().toISOString(),
-        schemaVersion: 1,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
       };
       zip.addFile(
         "manifest.json",
@@ -79,11 +85,15 @@ export class BackupService {
     restored: boolean;
     message?: string;
   }> {
+    const english = this.getLocale() === "en";
     const result = await dialog.showOpenDialog({
-      title: "اختر نسخة احتياطية",
+      title: english ? "Choose a backup" : "اختر نسخة احتياطية",
       properties: ["openFile"],
       filters: [
-        { name: "نسخة نظام المطعم", extensions: ["resturanet-backup"] },
+        {
+          name: english ? "Resturanet backup" : "نسخة نظام المطعم",
+          extensions: ["resturanet-backup"],
+        },
       ],
     });
     if (result.canceled || !result.filePaths[0])
@@ -108,7 +118,8 @@ export class BackupService {
     if (
       manifest.app !== "Resturanet" ||
       manifest.version !== 1 ||
-      manifest.schemaVersion > 1
+      manifest.schemaVersion < 1 ||
+      manifest.schemaVersion > CURRENT_SCHEMA_VERSION
     )
       throw new Error("نسخة احتياطية غير متوافقة");
 
@@ -149,7 +160,10 @@ export class BackupService {
       return {
         canceled: false,
         restored: true,
-        message: "تم استرجاع النسخة الاحتياطية بنجاح",
+        message:
+          this.getLocale() === "en"
+            ? "Backup restored successfully"
+            : "تم استرجاع النسخة الاحتياطية بنجاح",
       };
     } catch (error) {
       if (!this.manager.db.open) this.manager.reopen();

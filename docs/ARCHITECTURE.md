@@ -1,38 +1,71 @@
-# بنية Resturanet
+# Resturanet architecture
 
-## حدود التطبيق
+## Runtime boundary
 
-التطبيق أحادي المستخدم ومحلي بالكامل. لا توجد مصادقة أو خدمة شبكة أو مزامنة سحابية. واجهة React لا تصل إلى Node.js أو SQLite مباشرة؛ كل عملية تمر عبر API محدود في `src/preload/index.ts` وتُراجع مدخلاتها بواسطة Zod في العملية الرئيسية.
+Resturanet is a single-user, offline Electron application. React never receives Node.js or SQLite access. The renderer communicates through the typed and allowlisted `window.restaurantApi` bridge in the preload process.
 
-إعدادات نافذة Electron تفعّل `contextIsolation` وsandbox وتوقف `nodeIntegration` والنوافذ والتنقل الخارجي وطلبات الأذونات. تحتوي صفحة HTML على Content Security Policy تمنع الأكواد والكائنات البعيدة.
+The BrowserWindow enables `contextIsolation`, sandboxing, and web security while disabling Node integration, external navigation, new windows, and permission requests. The renderer Content Security Policy blocks remote scripts, objects, and connections.
 
-## طبقات التنفيذ
+## Layers
 
-- `src/shared`: العقود والأنواع وقواعد التحقق والحسابات المالية الخالصة.
-- `src/main`: SQLite والترحيلات والخدمات وIPC والمرفقات والنسخ الاحتياطي.
-- `src/preload`: واجهة `window.restaurantApi` المكتوبة الأنواع.
-- `src/renderer`: الواجهة العربية RTL والنماذج والتقارير.
+- `src/shared` contains contracts, Zod schemas, catalog definitions, and pure financial functions.
+- `src/main` owns SQLite, migrations, transactions, attachments, backups, printing, and IPC validation.
+- `src/preload` exposes the least-privilege typed API.
+- `src/renderer` contains the bilingual React interface and local translation dictionary.
 
-## البيانات والحسابات
+All money is stored as integer Iraqi dinars. Business dates use `YYYY-MM-DD` in the `Asia/Baghdad` timezone. IDs are UUIDs.
 
-تستخدم المبالغ أعدادًا صحيحة بالدينار، وتستخدم تواريخ العمل صيغة `YYYY-MM-DD` وفق توقيت بغداد. جميع عمليات الرأس والبنود تحفظ داخل معاملات SQLite، والاستعلامات التي تحتوي بيانات المستخدم معلّمة parameters.
+## Database and migrations
 
-لا يخزن رصيد المورد كقيمة قابلة للانحراف. يحسب من الرصيد الافتتاحي والمشتريات والدفعات وتسويات الفواتير القديمة. «المدفوع الآن» في فاتورة المورد ينشئ دفعة مرتبطة، ويظهر في كشف الحساب والأموال الخارجة مرة واحدة.
+Schema migrations are recorded in `schema_migrations`. Version 2 adds:
 
-السجلات المحذوفة تحمل `deleted_at` ولا تدخل في التقارير. تبقى المرفقات حتى الحذف النهائي. المورد الذي يملك حركات مالية يُعطّل بدل حذف تاريخه.
+- the persisted `ar` or `en` application language;
+- stable translation keys for built-in catalog rows;
+- a supplier opening-balance date;
+- dated supplier adjustments with increase-debt and decrease-debt directions.
 
-## الملفات والنسخ الاحتياطي
+Existing Arabic catalog names remain unchanged. Built-in rows are displayed through their stable translation key, while user-created names and notes are shown exactly as entered.
 
-تُنسخ المرفقات إلى مجلد التطبيق باسم UUID بعد فحص الامتداد والحجم والمسار. الحد الحالي 25MB للملف، والأنواع المقبولة JPG وJPEG وPNG وPDF.
+Every financial header and its child rows are written inside a SQLite transaction. Work days are created automatically for dated records and removed only when no active or trashed record still needs them.
 
-الحزمة الاحتياطية ذات امتداد `.resturanet-backup` وتحتوي:
+## Supplier accounting
 
-- `database.sqlite`: نسخة أنشأتها SQLite Backup API.
-- `manifest.json`: إصدار التطبيق ومخطط البيانات.
-- `attachments/`: المرفقات المحلية.
+Supplier balance is derived from:
 
-يتحقق الاسترجاع من أسماء جميع إدخالات ZIP ومن إصدار المخطط، وينشئ نسخة أمان قبل الاستبدال.
+`opening balance + purchases - payments + signed adjustments`
 
-## الاختبارات والإصدار
+The balance is never stored as a mutable running total. An embedded invoice payment creates a linked supplier payment so the ledger and cash-out reports include it exactly once.
 
-يغطي Vitest الحسابات والتحقق ومكونات RTL وتكامل SQLite. أوامر التحقق هي `npm run typecheck` و`npm test` و`npm run build`. ينشئ `npm run package:mac` حزمة ARM64 غير موقعة، وتحتاج الحزمة العامة إلى توقيع وتوثيق Apple.
+A first historical opening balance updates the supplier baseline. When a supplier already has a balance or activity, the application requires confirmation and records the difference as a dated adjustment instead of silently rewriting history. Adjustments affect supplier debt, work-day activity, the supplier statement, and the invoice register, but never recorded expenses or cash out.
+
+## Historical entry
+
+Detailed entry dispatches to the same save services used by the normal transaction pages and supports attachments. Batch entry uses a discriminated `HistoricalEntryInput` union, requires one transaction type per batch, validates up to 250 rows, and wraps all saves in one outer SQLite transaction.
+
+Batch mode intentionally excludes attachments. Duplicate numbers, overpayments, and existing opening balances retain their explicit confirmation gates.
+
+## Localization
+
+The language setting defaults to Arabic and is persisted in SQLite. The renderer updates the document `lang` and `dir`, uses locale-aware number and date formatting, and switches between RTL and LTR logical CSS. Native file dialogs, backup dialogs, CSV headers, print content, validation errors, and built-in catalogs follow the selected locale.
+
+The application bundle uses the language-neutral name `Resturanet`; the in-app product title is localized.
+
+## Attachments and backups
+
+Attachments are copied under UUID-based internal names after extension, size, and resolved-path validation. Supported formats are JPG, JPEG, PNG, and PDF, with a 25 MB per-file limit.
+
+Backup packages use the `.resturanet-backup` extension and contain `database.sqlite`, `manifest.json`, and `attachments/`. Restore rejects unknown ZIP paths, checks compatibility, creates a safety backup, stages files outside the data directory, and replaces data before reopening and migrating SQLite.
+
+## Validation
+
+Run:
+
+```bash
+npm run format:check
+npm run typecheck
+npm test
+npm run build
+npm run package:mac
+```
+
+The tests cover financial formulas, SQLite transactions, supplier adjustments, historical batch rollback, migration behavior, bilingual formatting, RTL/LTR behavior, and input validation.

@@ -1,11 +1,13 @@
 export type ID = string;
 export type ISODate = string;
 export type Money = number;
+export type AppLocale = "ar" | "en";
 
 export type EntityType =
   | "restaurantExpense"
   | "supplierInvoice"
   | "supplierPayment"
+  | "supplierAdjustment"
   | "sale"
   | "operatingExpense";
 
@@ -28,6 +30,7 @@ export interface CatalogItem {
   id: ID;
   kind: CatalogKind;
   name: string;
+  translationKey?: string | null;
   active: boolean;
   builtIn: boolean;
 }
@@ -41,6 +44,7 @@ export interface Supplier {
   address?: string;
   notes?: string;
   openingBalance: Money;
+  openingBalanceDate?: ISODate | null;
   active: boolean;
   purchases?: Money;
   payments?: Money;
@@ -132,6 +136,37 @@ export interface SupplierPayment extends SupplierPaymentInput {
   supplierName: string;
   invoiceId?: ID | null;
   deletedAt?: string | null;
+}
+
+export type SupplierAdjustmentDirection = "increase_debt" | "decrease_debt";
+
+export interface SupplierAdjustmentInput {
+  id?: ID;
+  adjustmentNumber?: string;
+  date: ISODate;
+  supplierId: ID;
+  direction: SupplierAdjustmentDirection;
+  amount: Money;
+  reason: string;
+  notes?: string;
+  attachmentTokens?: string[];
+  allowDuplicate?: boolean;
+}
+
+export interface SupplierAdjustment extends SupplierAdjustmentInput {
+  id: ID;
+  adjustmentNumber: string;
+  supplierName: string;
+  signedAmount: Money;
+  deletedAt?: string | null;
+}
+
+export interface SupplierOpeningBalanceInput {
+  date: ISODate;
+  supplierId: ID;
+  amount: Money;
+  notes?: string;
+  confirmExisting?: boolean;
 }
 
 export interface SaleLineInput {
@@ -241,6 +276,7 @@ export interface WorkDayDetail extends WorkDaySummary {
   restaurantExpenseInvoices: RestaurantExpense[];
   supplierInvoices: SupplierInvoice[];
   supplierPaymentsList: SupplierPayment[];
+  supplierAdjustmentsList: SupplierAdjustment[];
   salesRecords: Sale[];
   operatingExpensesList: OperatingExpense[];
 }
@@ -281,6 +317,7 @@ export interface TrashItem {
 export interface SettingsSnapshot {
   restaurantName: string;
   currency: "IQD";
+  language: AppLocale;
   catalogs: CatalogItem[];
 }
 
@@ -293,6 +330,7 @@ export interface ReportFilters extends DateRange {
 
 export interface ReportRow {
   id: ID;
+  entityType: EntityType;
   date: ISODate;
   type: string;
   reference: string;
@@ -301,6 +339,26 @@ export interface ReportRow {
   amount: Money;
   paid: Money;
   remaining: Money;
+}
+
+export type HistoricalEntryInput =
+  | { type: "restaurantExpense"; value: RestaurantExpenseInput }
+  | { type: "supplierInvoice"; value: SupplierInvoiceInput }
+  | { type: "supplierPayment"; value: SupplierPaymentInput }
+  | { type: "supplierOpeningBalance"; value: SupplierOpeningBalanceInput }
+  | { type: "supplierAdjustment"; value: SupplierAdjustmentInput }
+  | { type: "sale"; value: SaleInput }
+  | { type: "operatingExpense"; value: OperatingExpenseInput };
+
+export interface HistoricalBatchIssue {
+  row: number;
+  field?: string;
+  message: string;
+}
+
+export interface HistoricalBatchValidation {
+  valid: boolean;
+  issues: HistoricalBatchIssue[];
 }
 
 export interface DuplicateWarning {
@@ -317,6 +375,7 @@ export interface RestaurantApi {
   settings: {
     get(): Promise<SettingsSnapshot>;
     saveRestaurantName(name: string): Promise<SettingsSnapshot>;
+    saveLanguage(language: AppLocale): Promise<SettingsSnapshot>;
     addCatalog(kind: CatalogKind, name: string): Promise<CatalogItem>;
     toggleCatalog(id: ID, active: boolean): Promise<CatalogItem>;
   };
@@ -332,6 +391,7 @@ export interface RestaurantApi {
       ledger: LedgerEntry[];
       invoices: SupplierInvoice[];
       payments: SupplierPayment[];
+      adjustments: SupplierAdjustment[];
     }>;
     save(
       input: Omit<Supplier, "id"> & { id?: ID },
@@ -359,6 +419,17 @@ export interface RestaurantApi {
     save(input: SupplierPaymentInput): Promise<SaveResult<SupplierPayment>>;
     trash(id: ID): Promise<void>;
   };
+  supplierAdjustments: {
+    list(range?: DateRange): Promise<SupplierAdjustment[]>;
+    get(id: ID): Promise<SupplierAdjustment>;
+    save(
+      input: SupplierAdjustmentInput,
+    ): Promise<SaveResult<SupplierAdjustment>>;
+    saveOpeningBalance(
+      input: SupplierOpeningBalanceInput,
+    ): Promise<SaveResult<Supplier | SupplierAdjustment>>;
+    trash(id: ID): Promise<void>;
+  };
   sales: {
     list(range?: DateRange): Promise<Sale[]>;
     get(id: ID): Promise<Sale>;
@@ -370,6 +441,12 @@ export interface RestaurantApi {
     get(id: ID): Promise<OperatingExpense>;
     save(input: OperatingExpenseInput): Promise<SaveResult<OperatingExpense>>;
     trash(id: ID): Promise<void>;
+  };
+  historicalEntries: {
+    validateBatch(
+      entries: HistoricalEntryInput[],
+    ): Promise<HistoricalBatchValidation>;
+    saveBatch(entries: HistoricalEntryInput[]): Promise<{ saved: number }>;
   };
   reports: {
     rows(filters: ReportFilters): Promise<ReportRow[]>;

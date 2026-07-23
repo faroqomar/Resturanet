@@ -1,5 +1,6 @@
 import type { DateRange } from "@shared/contracts";
 import { monthRange, todayBaghdad, weekRange } from "@shared/finance";
+import { getActiveLocale, translateRaw } from "./i18n";
 
 export const api = window.restaurantApi;
 export const today = todayBaghdad;
@@ -13,17 +14,26 @@ export function rangeFor(kind: "today" | "week" | "month"): DateRange {
 
 export function errorMessage(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error);
-  return raw
-    .replace(/^Error invoking remote method '[^']+': Error: /, "")
-    .replace(/^Error: /, "");
+  return translateRaw(
+    raw
+      .replace(/^Error invoking remote method '[^']+': Error: /, "")
+      .replace(/^Error: /, ""),
+  );
 }
 
 export function formatDate(value: string): string {
-  if (value === "0000-00-00") return "قبل بداية السجل";
-  return new Intl.DateTimeFormat("ar-IQ", {
-    dateStyle: "medium",
-    timeZone: "Asia/Baghdad",
-  }).format(new Date(`${value}T12:00:00+03:00`));
+  if (value === "0000-00-00") return translateRaw("قبل بداية السجل");
+  return new Intl.DateTimeFormat(
+    getActiveLocale() === "ar" ? "ar-IQ" : "en-IQ",
+    {
+      dateStyle: "medium",
+      timeZone: "Asia/Baghdad",
+    },
+  ).format(new Date(`${value}T12:00:00+03:00`));
+}
+
+export function formatNumber(value: number): string {
+  return value.toLocaleString(getActiveLocale() === "ar" ? "ar-IQ" : "en-IQ");
 }
 
 export function numberValue(value: string): number {

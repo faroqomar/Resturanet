@@ -1,45 +1,77 @@
-# نظام المطعم — Resturanet
+# Resturanet
 
-تطبيق سطح مكتب عربي ومحلي لإدارة مبيعات ومصاريف وفواتير وديون موردي مطعم واحد. يعمل دون إنترنت ويحفظ SQLite والمرفقات داخل مجلد بيانات التطبيق.
+Resturanet is an offline, bilingual Arabic/English desktop application for managing the sales, expenses, supplier invoices, supplier balances, and daily records of a single restaurant.
 
-## الوظائف المنفذة
+The application is built with Electron, React, TypeScript, and SQLite through `better-sqlite3`. All financial data and attachments remain on the local computer; no account, internet connection, cloud service, or remote content is required.
 
-- لوحة يومية وأسبوعية وشهرية تفصل بين المصروف المسجل والمال الخارج فعليًا.
-- أيام عمل تجمع المبيعات والمصاريف والفواتير والدفعات حسب التاريخ.
-- موردون ودفتر حركة مشتق وفواتير عادية وفواتير مخضر ودفعات مستقلة.
-- مبيعات بحالة اكتمال صريحة، والتزامات إيجار ورواتب ومصاريف مع دفعات جزئية.
-- تقارير مالية وديون الموردين والمصاريف حسب القسم وسجل فواتير قابل للطباعة والتصدير إلى CSV.
-- صور JPG/JPEG/PNG وملفات PDF محلية، وسلة محذوفات، ونسخ احتياطي واسترجاع كامل.
+## Features
 
-## التشغيل
+- Arabic RTL and English LTR interfaces with a persistent language switch.
+- Daily, weekly, monthly, and custom-range financial dashboards.
+- Work days that group every transaction by its Baghdad calendar date.
+- Restaurant expense invoices with categories, attachments, and optional manual totals.
+- Standard and produce supplier invoices, embedded payments, standalone payments, and derived supplier statements.
+- Dated supplier opening balances and explicit debt-increase or debt-decrease adjustments.
+- Daily sales with complete, estimated, or unavailable data states.
+- Rent, salaries, and other liabilities with partial payments.
+- Historical Entry Center with a detailed form and atomic batch entry.
+- Financial reports, supplier debt reports, category breakdowns, printing, and UTF-8 CSV export.
+- JPG, JPEG, PNG, and PDF attachments up to 25 MB.
+- Recoverable trash, full SQLite/attachment backups, and safe restore.
+
+## Historical Entry Center
+
+The **Historical Entry** page records older restaurant data without creating a separate ledger. It supports restaurant expenses, standard and produce supplier invoices, supplier payments, supplier opening balances and adjustments, sales, and operating expenses.
+
+Detailed mode supports line items and attachments. Batch mode accepts one transaction type per batch, validates every row, and saves the entire batch inside one SQLite transaction. If one row fails, no row is committed.
+
+Supplier opening balances and adjustments affect supplier debt only. They do not count as recorded expenses or cash out.
+
+## Development
+
+Requirements: macOS, Node.js, and npm.
 
 ```bash
 npm install
 npm run dev
 ```
 
-## التحقق والبناء
+Quality checks:
 
 ```bash
+npm run format:check
 npm run typecheck
 npm test
 npm run build
+```
+
+Build the Apple Silicon DMG:
+
+```bash
 npm run package:mac
 ```
 
-ينتج ملف DMG غير موقّع داخل `release/`. تحتاج النسخة الموزعة للعامة إلى شهادة Apple Developer للتوقيع والتوثيق.
+The output is written to `release/Resturanet-1.1.0-arm64.dmg`. The local build is ad-hoc signed but is not notarized with an Apple Developer ID.
 
-## مكان البيانات
+## Local data and backups
 
-يستخدم التطبيق مجلد `userData` القياسي الخاص بـ Electron، ويضع داخله قاعدة البيانات ومجلد المرفقات. يمكن إنشاء حزمة احتياطية كاملة من صفحة الإعدادات.
+Resturanet stores its SQLite database and attachment directory under Electron's standard `userData` folder. Use **Settings → Create backup** instead of copying the live SQLite file.
 
-لا تنقل ملف SQLite وحده أثناء تشغيل التطبيق. استخدم «إنشاء نسخة احتياطية» لكي تتضمن النسخة قاعدة سليمة وجميع المرفقات. ينشئ الاسترجاع نسخة أمان تلقائية قبل استبدال البيانات.
+A `.resturanet-backup` package contains:
 
-## قواعد مالية مهمة
+- a consistent SQLite Backup API snapshot;
+- all local attachments;
+- a manifest containing the application and schema versions.
 
-- فاتورة المورد تزيد المشتريات والدين، ودفعة المورد تدخل ضمن الأموال الخارجة فقط؛ لذلك لا تُحسب العملية مرتين.
-- مصروف المطعم المباشر يُعد مصروفًا مسجلًا ومالًا خارجًا.
-- الإيجار والراتب يسجلان كالتزام، وتدخل دفعاتهما فقط ضمن المال الخارج.
-- لا تظهر النتيجة التقريبية عند وجود يوم عمل بلا بيانات مبيعات أو بحالة «غير متوفرة».
+Restoring creates an automatic safety backup first. Backups from schema version 1 are accepted and migrated to the current schema.
 
-راجع [وثيقة البنية](docs/ARCHITECTURE.md) لتفاصيل قاعدة البيانات وواجهة Electron الآمنة.
+## Financial rules
+
+- A supplier invoice increases purchases and supplier debt.
+- A supplier payment is actual cash out and is counted once.
+- A direct restaurant expense is both a recorded expense and cash out.
+- Rent, salaries, and other liabilities are recorded expenses; only their payments are cash out.
+- Supplier opening balances and adjustments change supplier debt only.
+- An estimated result is shown only when every work day in the range has usable sales data.
+
+See [Architecture](docs/ARCHITECTURE.md) for the data model, IPC boundary, migration strategy, and security design.

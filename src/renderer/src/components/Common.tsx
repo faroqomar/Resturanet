@@ -21,6 +21,7 @@ import type {
   PendingAttachment,
 } from "@shared/contracts";
 import { api, errorMessage, rangeFor } from "../lib";
+import { useI18n } from "../i18n";
 
 export function PageHeader({
   title,
@@ -49,14 +50,17 @@ export function Money({
   value: number;
   tone?: "good" | "bad" | "muted";
 }) {
+  const { locale } = useI18n();
   return (
     <span className={`money ${tone ?? ""}`}>
       <bdi dir="ltr">
-        {new Intl.NumberFormat("ar-IQ", { maximumFractionDigits: 0 }).format(
-          value,
-        )}
+        {new Intl.NumberFormat(locale === "ar" ? "ar-IQ" : "en-IQ", {
+          maximumFractionDigits: 0,
+        }).format(value)}
       </bdi>{" "}
-      <span dir="rtl">د.ع</span>
+      <span dir={locale === "ar" ? "rtl" : "ltr"}>
+        {locale === "ar" ? "د.ع" : "IQD"}
+      </span>
     </span>
   );
 }
@@ -70,9 +74,10 @@ export function EmptyState({
   description: string;
   action?: ReactNode;
 }) {
+  const { locale } = useI18n();
   return (
     <div className="empty">
-      <span className="empty-mark">ر</span>
+      <span className="empty-mark">{locale === "ar" ? "ر" : "R"}</span>
       <h3>{title}</h3>
       <p>{description}</p>
       {action}
@@ -282,7 +287,11 @@ export function TableActions({
 
 export function PrintButton() {
   return (
-    <button className="button secondary" onClick={() => api.print.current()}>
+    <button
+      type="button"
+      className="button secondary"
+      onClick={() => api.print.current()}
+    >
       <Printer size={17} /> طباعة
     </button>
   );
@@ -319,7 +328,11 @@ export function useLoad<T>(loader: () => Promise<T>, deps: unknown[] = []) {
 }
 
 export async function saveWithConfirm<
-  T extends { allowDuplicate?: boolean; confirmOverpayment?: boolean },
+  T extends {
+    allowDuplicate?: boolean;
+    confirmOverpayment?: boolean;
+    confirmExisting?: boolean;
+  },
 >(input: T, saver: (value: T) => Promise<unknown>): Promise<void> {
   try {
     await saver(input);
@@ -335,6 +348,11 @@ export async function saveWithConfirm<
       window.confirm(message.replace("OVERPAYMENT_CONFIRM_REQUIRED:", ""))
     )
       return void (await saver({ ...input, confirmOverpayment: true }));
+    if (
+      message.includes("OPENING_BALANCE_CONFIRM_REQUIRED") &&
+      window.confirm(message.replace("OPENING_BALANCE_CONFIRM_REQUIRED:", ""))
+    )
+      return void (await saver({ ...input, confirmExisting: true }));
     throw error;
   }
 }

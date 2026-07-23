@@ -22,7 +22,14 @@ import {
   saveWithConfirm,
   useLoad,
 } from "../components/Common";
-import { api, errorMessage, formatDate, numberValue, today } from "../lib";
+import {
+  api,
+  errorMessage,
+  formatDate,
+  formatNumber,
+  numberValue,
+  today,
+} from "../lib";
 
 const blank = (supplierId = ""): SupplierPaymentInput => ({
   date: today(),
@@ -111,8 +118,7 @@ export function SupplierPaymentsPage() {
                 >
                   {suppliers.data.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} —{" "}
-                      {Math.max(0, s.balance ?? 0).toLocaleString("ar-IQ")} د.ع
+                      {s.name} — {formatNumber(Math.max(0, s.balance ?? 0))} IQD
                     </option>
                   ))}
                 </Select>

@@ -14,9 +14,11 @@ import {
   Loading,
   Notice,
   PageHeader,
+  Select,
   useLoad,
 } from "../components/Common";
 import { api, errorMessage } from "../lib";
+import { useI18n } from "../i18n";
 
 const catalogLabels: Record<CatalogKind, string> = {
   supplier_type: "أنواع الموردين",
@@ -31,11 +33,15 @@ export function SettingsPage({
   settings: SettingsSnapshot;
   onSettings: (value: SettingsSnapshot) => void;
 }) {
+  const { locale, setLocale, catalogName } = useI18n();
   const [name, setName] = useState(settings.restaurantName);
   const [newNames, setNewNames] = useState<
     Partial<Record<CatalogKind, string>>
   >({});
   const [message, setMessage] = useState("");
+  const [messageKind, setMessageKind] = useState<"success" | "danger">(
+    "success",
+  );
   const [busy, setBusy] = useState(false);
   const trash = useLoad(() => api.trash.list());
   const refresh = async () => onSettings(await api.settings.get());
@@ -44,8 +50,10 @@ export function SettingsPage({
     try {
       onSettings(await api.settings.saveRestaurantName(name));
       setMessage("تم تحديث اسم المطعم");
+      setMessageKind("success");
     } catch (e) {
       setMessage(errorMessage(e));
+      setMessageKind("danger");
     } finally {
       setBusy(false);
     }
@@ -58,8 +66,10 @@ export function SettingsPage({
       setNewNames({ ...newNames, [kind]: "" });
       await refresh();
       setMessage("تمت إضافة النوع");
+      setMessageKind("success");
     } catch (e) {
       setMessage(errorMessage(e));
+      setMessageKind("danger");
     }
   };
   const createBackup = async () => {
@@ -68,8 +78,10 @@ export function SettingsPage({
       const result = await api.backup.create();
       if (!result.canceled)
         setMessage(`تم حفظ النسخة الاحتياطية في ${result.path}`);
+      setMessageKind("success");
     } catch (e) {
       setMessage(errorMessage(e));
+      setMessageKind("danger");
     } finally {
       setBusy(false);
     }
@@ -85,11 +97,16 @@ export function SettingsPage({
     try {
       const result = await api.backup.restore();
       if (result.restored) {
+        const restoredSettings = await api.settings.get();
+        onSettings(restoredSettings);
+        setName(restoredSettings.restaurantName);
+        trash.reload();
         setMessage(result.message ?? "تم الاسترجاع");
-        location.reload();
+        setMessageKind("success");
       }
     } catch (e) {
       setMessage(errorMessage(e));
+      setMessageKind("danger");
     } finally {
       setBusy(false);
     }
@@ -100,11 +117,7 @@ export function SettingsPage({
         eyebrow="إدارة التطبيق والبيانات المحلية"
         title="الإعدادات والنسخ الاحتياطي"
       />
-      {message && (
-        <Notice kind={message.startsWith("تم") ? "success" : "danger"}>
-          {message}
-        </Notice>
-      )}
+      {message && <Notice kind={messageKind}>{message}</Notice>}
       <div className="settings-grid">
         <section className="panel">
           <div className="section-title">
@@ -116,7 +129,23 @@ export function SettingsPage({
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
           <Field label="العملة">
-            <Input value="الدينار العراقي (IQD)" disabled />
+            <Input
+              value={
+                locale === "ar" ? "الدينار العراقي (IQD)" : "Iraqi dinar (IQD)"
+              }
+              disabled
+            />
+          </Field>
+          <Field label="لغة التطبيق">
+            <Select
+              value={locale}
+              onChange={(event) =>
+                void setLocale(event.target.value as "ar" | "en")
+              }
+            >
+              <option value="ar">العربية</option>
+              <option value="en">English</option>
+            </Select>
           </Field>
           <button className="button primary" disabled={busy} onClick={saveName}>
             حفظ التغييرات
@@ -169,7 +198,7 @@ export function SettingsPage({
                         await refresh();
                       }}
                     >
-                      <span>{item.name}</span>
+                      <span>{catalogName(item)}</span>
                       <small>{item.active ? "نشط" : "غير نشط"}</small>
                     </button>
                   ))}
@@ -211,7 +240,9 @@ export function SettingsPage({
                 <span>
                   <b>{item.title}</b>
                   <small>
-                    {new Date(item.deletedAt).toLocaleString("ar-IQ")}
+                    {new Date(item.deletedAt).toLocaleString(
+                      locale === "ar" ? "ar-IQ" : "en-IQ",
+                    )}
                   </small>
                 </span>
                 <div>

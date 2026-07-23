@@ -24,6 +24,7 @@ import {
   useLoad,
 } from "../components/Common";
 import { api, errorMessage, formatDate, numberValue, today } from "../lib";
+import { useI18n } from "../i18n";
 const blank = (): SaleInput => ({
   date: today(),
   completeness: "complete",
@@ -32,6 +33,7 @@ const blank = (): SaleInput => ({
   lines: [],
 });
 export function SalesPage({ settings }: { settings: SettingsSnapshot }) {
+  const { catalogName } = useI18n();
   const categories = settings.catalogs.filter(
     (x) => x.kind === "sales_category" && x.active,
   );
@@ -198,7 +200,7 @@ export function SalesPage({ settings }: { settings: SettingsSnapshot }) {
                     >
                       {categories.map((x) => (
                         <option key={x.id} value={x.id}>
-                          {x.name}
+                          {catalogName(x)}
                         </option>
                       ))}
                     </Select>

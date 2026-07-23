@@ -20,6 +20,7 @@ import {
   useLoad,
 } from "../components/Common";
 import { api, formatDate, rangeFor } from "../lib";
+import { useI18n } from "../i18n";
 
 type ReportView = "summary" | "supplierDebt" | "categories" | "invoices";
 
@@ -50,12 +51,14 @@ function Change({ current, previous }: { current: number; previous: number }) {
 }
 
 export function ReportsPage() {
+  const { catalogName } = useI18n();
   const [range, setRange] = useState<DateRange>(rangeFor("month"));
   const [view, setView] = useState<ReportView>("summary");
   const [entityType, setEntityType] = useState<EntityType | "">("");
   const [supplierId, setSupplierId] = useState("");
   const [search, setSearch] = useState("");
   const suppliers = useLoad(() => api.suppliers.list(true));
+  const settings = useLoad(() => api.settings.get());
   const filters: ReportFilters = {
     ...range,
     entityType: entityType || undefined,
@@ -85,7 +88,12 @@ export function ReportsPage() {
   const categories = useMemo(() => {
     const map = new Map<string, { amount: number; count: Set<string> }>();
     for (const row of data ?? []) {
-      if (row.type === "مبيعات" || row.type === "دفعة مورد") continue;
+      if (
+        ["sale", "supplierPayment", "supplierAdjustment"].includes(
+          row.entityType,
+        )
+      )
+        continue;
       const value = map.get(row.category) ?? {
         amount: 0,
         count: new Set<string>(),
@@ -156,6 +164,7 @@ export function ReportsPage() {
           <option value="restaurantExpense">فواتير مصاريف المطعم</option>
           <option value="supplierInvoice">فواتير الموردين</option>
           <option value="supplierPayment">دفعات الموردين</option>
+          <option value="supplierAdjustment">تسويات الموردين</option>
           <option value="sale">المبيعات</option>
           <option value="operatingExpense">الإيجار والرواتب والمصاريف</option>
         </Select>
@@ -275,7 +284,19 @@ export function ReportsPage() {
                   .map((s) => (
                     <tr key={s.id}>
                       <td>{s.name}</td>
-                      <td>{s.typeName}</td>
+                      <td>
+                        {catalogName(
+                          settings.data?.catalogs.find(
+                            (item) => item.id === s.typeId,
+                          ) ?? {
+                            id: s.typeId,
+                            kind: "supplier_type",
+                            name: s.typeName ?? "",
+                            active: true,
+                            builtIn: false,
+                          },
+                        )}
+                      </td>
                       <td>
                         <Money value={s.openingBalance} />
                       </td>

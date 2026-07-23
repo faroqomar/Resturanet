@@ -30,9 +30,11 @@ import {
   PageHeader,
   useLoad,
 } from "../components/Common";
-import { api, formatDate, rangeFor } from "../lib";
+import { api, formatDate, formatNumber, rangeFor } from "../lib";
+import { translateRaw, useI18n } from "../i18n";
 
 export function DashboardPage() {
+  const { locale } = useI18n();
   const [range, setRange] = useState<DateRange>(rangeFor("month"));
   const { data, error } = useLoad(
     () => api.dashboard.get(range),
@@ -68,7 +70,7 @@ export function DashboardPage() {
               <Icon size={21} />
             </div>
             {tone === "count" ? (
-              <strong>{value.toLocaleString("ar-IQ")}</strong>
+              <strong>{formatNumber(value)}</strong>
             ) : (
               <Money value={value} tone={tone as "good" | "bad" | undefined} />
             )}
@@ -127,11 +129,11 @@ export function DashboardPage() {
                 />
                 <YAxis
                   orientation="right"
-                  tickFormatter={(v) => `${Math.round(v / 1000)}أ`}
+                  tickFormatter={(v) =>
+                    `${Math.round(v / 1000)}${locale === "ar" ? "أ" : "K"}`
+                  }
                 />
-                <Tooltip
-                  formatter={(value) => Number(value).toLocaleString("ar-IQ")}
-                />
+                <Tooltip formatter={(value) => formatNumber(Number(value))} />
                 <Area
                   type="monotone"
                   dataKey="sales"
@@ -193,7 +195,14 @@ export function DashboardPage() {
               {data.recent.map((item) => (
                 <div key={`${item.type}-${item.id}-${item.title}`}>
                   <span>
-                    <b>{item.title}</b>
+                    <b>
+                      {(() => {
+                        const [type, party] = item.title.split(" — ");
+                        return `${translateRaw(type)} — ${
+                          type === "مبيعات" ? translateRaw(party) : party
+                        }`;
+                      })()}
+                    </b>
                     <small>{formatDate(item.date)}</small>
                   </span>
                   <Money value={item.amount} />

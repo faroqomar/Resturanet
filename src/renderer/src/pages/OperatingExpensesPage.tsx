@@ -24,6 +24,7 @@ import {
   useLoad,
 } from "../components/Common";
 import { api, errorMessage, formatDate, numberValue, today } from "../lib";
+import { useI18n } from "../i18n";
 const blank = (expenseTypeId = ""): OperatingExpenseInput => ({
   date: today(),
   expenseTypeId,
@@ -37,6 +38,7 @@ export function OperatingExpensesPage({
 }: {
   settings: SettingsSnapshot;
 }) {
+  const { catalogName } = useI18n();
   const types = settings.catalogs.filter(
     (x) => x.kind === "expense_type" && x.active,
   );
@@ -122,7 +124,7 @@ export function OperatingExpensesPage({
                 >
                   {types.map((x) => (
                     <option key={x.id} value={x.id}>
-                      {x.name}
+                      {catalogName(x)}
                     </option>
                   ))}
                 </Select>
@@ -315,7 +317,19 @@ export function OperatingExpensesPage({
                 <tr key={item.id}>
                   <td>{item.recordNumber}</td>
                   <td>{formatDate(item.date)}</td>
-                  <td>{item.expenseTypeName}</td>
+                  <td>
+                    {catalogName(
+                      settings.catalogs.find(
+                        (entry) => entry.id === item.expenseTypeId,
+                      ) ?? {
+                        id: item.expenseTypeId,
+                        kind: "expense_type",
+                        name: item.expenseTypeName,
+                        active: true,
+                        builtIn: false,
+                      },
+                    )}
+                  </td>
                   <td>{item.recipient || "—"}</td>
                   <td>
                     <Money value={item.totalDue} />

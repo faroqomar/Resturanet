@@ -80,12 +80,12 @@ a {
   display: grid;
   grid-template-columns: 280px 1fr;
   min-height: 100vh;
-  direction: rtl;
+  direction: inherit;
 }
 .sidebar {
   position: fixed;
   inset-block: 0;
-  right: 0;
+  inset-inline-start: 0;
   width: 280px;
   display: flex;
   flex-direction: column;
@@ -197,11 +197,14 @@ a {
 }
 .quick-wrap {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
 }
 .quick-menu {
   position: absolute;
   top: calc(100% + 9px);
-  left: 0;
+  inset-inline-end: 0;
   width: 250px;
   background: var(--paper);
   border: 1px solid var(--line);
@@ -956,7 +959,7 @@ input:disabled {
   flex-direction: column;
   gap: 5px;
   padding: 16px;
-  border-left: 1px solid var(--line);
+  border-inline-start: 1px solid var(--line);
 }
 .day-summary > span:last-child,
 .supplier-stats > span:last-child {
@@ -982,12 +985,12 @@ input:disabled {
 }
 .report-filters label svg {
   position: absolute;
-  right: 12px;
+  inset-inline-start: 12px;
   top: 13px;
   color: var(--muted);
 }
 .report-filters label input {
-  padding-right: 38px;
+  padding-inline-start: 38px;
 }
 .report-summary {
   display: grid;
@@ -1002,7 +1005,7 @@ input:disabled {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  border-left: 1px solid oklch(100% 0 0 / 0.12);
+  border-inline-start: 1px solid oklch(100% 0 0 / 0.12);
 }
 .report-summary > div:last-child {
   border: 0;
@@ -1171,7 +1174,7 @@ input:disabled {
   border: 90px solid oklch(67% 0.11 76 / 0.22);
   border-radius: 50%;
   top: -140px;
-  right: -110px;
+  inset-inline-start: -110px;
 }
 .setup-art > span {
   font-family: "Alexandria";
@@ -1206,6 +1209,210 @@ input:disabled {
   margin: auto;
 }
 
+.language-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 39px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+}
+.language-toggle span {
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  min-height: 29px;
+  padding-inline: 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.language-toggle span.active {
+  background: var(--ink);
+  color: var(--paper);
+}
+.language-toggle.compact {
+  border-color: oklch(82% 0.02 78);
+  background: transparent;
+}
+.setup-language {
+  position: fixed;
+  inset-block-start: 24px;
+  inset-inline-end: 28px;
+  z-index: 10;
+}
+
+.historical-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  color: oklch(94% 0.02 80);
+  background: oklch(31% 0.04 76);
+  border-radius: 13px;
+}
+.historical-intro svg {
+  flex: 0 0 auto;
+  color: var(--amber);
+}
+.historical-intro p {
+  max-width: 760px;
+  margin: 4px 0 0;
+  color: oklch(78% 0.02 80);
+}
+.historical-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(280px, 430px);
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+.historical-toolbar .field {
+  margin: 0;
+}
+.historical-form {
+  animation: historical-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes historical-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.historical-lines {
+  margin-block: 22px;
+}
+.historical-line {
+  display: grid;
+  grid-template-columns:
+    minmax(170px, 1.5fr) repeat(3, minmax(110px, 0.7fr))
+    minmax(130px, 0.8fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+}
+.historical-line .field {
+  margin: 0;
+}
+.batch-entry {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  box-shadow: var(--shadow);
+  animation: historical-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.batch-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--line);
+}
+.batch-head > div:first-child {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+.batch-head h2 {
+  margin-bottom: 3px;
+}
+.batch-head p {
+  margin: 0;
+  color: var(--muted);
+}
+.batch-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: 0 0 auto;
+}
+.batch-total .money {
+  font-size: 1.22rem;
+  font-weight: 700;
+}
+.batch-table-wrap {
+  overflow: auto;
+  max-height: 560px;
+}
+.batch-table {
+  min-width: 1050px;
+}
+.batch-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.batch-table th {
+  white-space: nowrap;
+}
+.batch-table td {
+  min-width: 130px;
+  padding: 8px;
+  vertical-align: middle;
+}
+.batch-table td:first-child,
+.batch-table td:last-child {
+  min-width: auto;
+  width: 42px;
+}
+.batch-table input,
+.batch-table select {
+  min-height: 39px;
+  padding: 7px 9px;
+}
+.batch-table tr.row-error > td {
+  background: var(--brick-soft);
+  border-bottom: 0;
+}
+.batch-issue td {
+  padding: 6px 12px 10px;
+  color: var(--brick);
+  background: var(--brick-soft);
+  font-size: 0.8rem;
+}
+.batch-adjustment {
+  display: grid;
+  grid-template-columns: 110px minmax(150px, 1fr);
+  gap: 6px;
+}
+.batch-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 17px 20px;
+  border-top: 1px solid var(--line);
+}
+.batch-actions .button.primary {
+  margin-inline-start: auto;
+}
+
+[dir="ltr"] .sidebar nav a:hover {
+  transform: translateX(2px);
+}
+[dir="ltr"] .money {
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+}
+[dir="ltr"] input[type="tel"],
+[dir="ltr"] input[type="number"] {
+  text-align: left;
+}
+
 @media (max-width: 1250px) {
   .metrics {
     grid-template-columns: repeat(2, 1fr);
@@ -1222,6 +1429,12 @@ input:disabled {
   .invoice-line .field:nth-child(4),
   .invoice-line .field:nth-child(5) {
     grid-row: 2;
+  }
+  .historical-line {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  }
+  .historical-toolbar {
+    grid-template-columns: 1fr;
   }
   .day-row {
     grid-template-columns: 1.2fr repeat(2, 1fr) auto;

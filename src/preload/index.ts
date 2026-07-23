@@ -8,6 +8,7 @@ const api: RestaurantApi = {
   settings: {
     get: () => invoke("settings:get"),
     saveRestaurantName: (name) => invoke("settings:name", name),
+    saveLanguage: (language) => invoke("settings:language", language),
     addCatalog: (kind, name) => invoke("settings:catalog:add", kind, name),
     toggleCatalog: (id, active) =>
       invoke("settings:catalog:toggle", id, active),
@@ -41,6 +42,14 @@ const api: RestaurantApi = {
     save: (input) => invoke("supplier-payments:save", input),
     trash: (id) => invoke("supplier-payments:trash", id),
   },
+  supplierAdjustments: {
+    list: (range) => invoke("supplier-adjustments:list", range),
+    get: (id) => invoke("supplier-adjustments:get", id),
+    save: (input) => invoke("supplier-adjustments:save", input),
+    saveOpeningBalance: (input) =>
+      invoke("supplier-adjustments:opening", input),
+    trash: (id) => invoke("supplier-adjustments:trash", id),
+  },
   sales: {
     list: (range) => invoke("sales:list", range),
     get: (id) => invoke("sales:get", id),
@@ -52,6 +61,10 @@ const api: RestaurantApi = {
     get: (id) => invoke("operating-expenses:get", id),
     save: (input) => invoke("operating-expenses:save", input),
     trash: (id) => invoke("operating-expenses:trash", id),
+  },
+  historicalEntries: {
+    validateBatch: (entries) => invoke("historical:validate-batch", entries),
+    saveBatch: (entries) => invoke("historical:save-batch", entries),
   },
   reports: {
     rows: (filters) => invoke("reports:rows", filters),

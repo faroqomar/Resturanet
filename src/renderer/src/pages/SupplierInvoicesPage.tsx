@@ -25,10 +25,12 @@ import {
   useLoad,
 } from "../components/Common";
 import { api, errorMessage, formatDate, numberValue, today } from "../lib";
+import { useI18n } from "../i18n";
 
 const blank = (
   kind: SupplierInvoiceKind,
   supplierId = "",
+  locale: "ar" | "en" = "ar",
 ): SupplierInvoiceInput => ({
   kind,
   date: today(),
@@ -40,7 +42,7 @@ const blank = (
     {
       name: "",
       quantity: 1,
-      unit: kind === "produce" ? "كيلو" : "",
+      unit: kind === "produce" ? (locale === "ar" ? "كيلو" : "kg") : "",
       unitPrice: null,
       total: 0,
       notes: "",
@@ -49,6 +51,7 @@ const blank = (
 });
 
 export function SupplierInvoicesPage({ kind }: { kind: SupplierInvoiceKind }) {
+  const { locale } = useI18n();
   const suppliers = useLoad(() => api.suppliers.list());
   const { data, error, reload } = useLoad(
     () => api.supplierInvoices.list(kind),
@@ -61,8 +64,8 @@ export function SupplierInvoicesPage({ kind }: { kind: SupplierInvoiceKind }) {
   useEffect(() => {
     setForm(null);
     if (new URLSearchParams(location.hash.split("?")[1]).get("new"))
-      setForm(blank(kind, suppliers.data?.[0]?.id));
-  }, [kind, suppliers.data]);
+      setForm(blank(kind, suppliers.data?.[0]?.id, locale));
+  }, [kind, locale, suppliers.data]);
   const total = useMemo(
     () => form?.lines.reduce((sum, line) => sum + line.total, 0) ?? 0,
     [form],
@@ -101,7 +104,9 @@ export function SupplierInvoicesPage({ kind }: { kind: SupplierInvoiceKind }) {
         actions={
           <button
             className="button primary"
-            onClick={() => setForm(blank(kind, suppliers.data?.[0]?.id))}
+            onClick={() =>
+              setForm(blank(kind, suppliers.data?.[0]?.id, locale))
+            }
           >
             <Plus size={18} /> إنشاء فاتورة جديدة
           </button>
@@ -166,7 +171,12 @@ export function SupplierInvoicesPage({ kind }: { kind: SupplierInvoiceKind }) {
                       {
                         name: "",
                         quantity: 1,
-                        unit: kind === "produce" ? "كيلو" : "",
+                        unit:
+                          kind === "produce"
+                            ? locale === "ar"
+                              ? "كيلو"
+                              : "kg"
+                            : "",
                         unitPrice: null,
                         total: 0,
                         notes: "",
